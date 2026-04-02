@@ -5,27 +5,26 @@
 
 // ─── EMAIL (EmailJS) ────────────────────────────────────────
 export const EMAIL_CONFIG = {
-  SERVICE_ID: 'YOUR_SERVICE_ID',
-  TEMPLATE_ID: 'YOUR_TEMPLATE_ID',
-  PUBLIC_KEY: 'YOUR_PUBLIC_KEY',
+  SERVICE_ID: 'service_mdao1su',
+  TEMPLATE_ID: 'template_yp4a8tv',
+  PUBLIC_KEY: 'K798Sk097ae8bj134',
 };
 
 // ─── APP BRANDING ────────────────────────────────────────────
 export const BRAND = {
-  name: 'C Score',
+  name: 'Score',
   tagline: 'Ask the questions you\'re too shy to ask.',
-  subtitle: 'Send a link. See how compatible you really are.',
+  subtitle: 'Send a link. See how compatible you both really are.',
 };
 
 // ─── CATEGORIES ─────────────────────────────────────────────
-export const CATEGORIES: string[] = [
-  'Emotional', 'Romantic', 'Friendship', 'Fun & Humour',
-  'Deep / Personal', 'Future Goals', 'Family', 'Lifestyle',
-  'Communication', 'Trust & Loyalty', 'Intimacy', 'Social Life',
-  'Career & Ambition', 'Money & Finance', 'Health & Fitness',
-  'Spirituality', 'Politics & Society', 'Travel & Adventure',
-  'Food & Taste', 'Entertainment', 'Personal Growth',
-  'Conflict Style', 'Love Language', 'Red Flags',
+export const CATEGORIES = [
+  'Emotional', 'Romantic', 'Friendship', 'Fun & Humour', 'Deep / Personal',
+  'Future Goals', 'Family', 'Lifestyle', 'Communication', 'Trust & Loyalty',
+  'Intimacy', 'Social Life', 'Career & Ambition', 'Money & Finance',
+  'Health & Fitness', 'Spirituality', 'Politics & Society', 'Travel & Adventure',
+  'Food & Taste', 'Entertainment', 'Personal Growth', 'Conflict Style',
+  'Love Language', 'Red Flags'
 ];
 
 // ─── COMPATIBILITY LABEL SETS ────────────────────────────────

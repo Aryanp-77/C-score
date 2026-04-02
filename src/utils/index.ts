@@ -104,6 +104,22 @@ export function clearSession(): void {
   sessionStorage.removeItem(RESULT_KEY);
 }
 
+export function encodeSessionData(data: SessionData): string {
+  try {
+    return btoa(encodeURIComponent(JSON.stringify(data)));
+  } catch {
+    return '';
+  }
+}
+
+export function decodeSessionData(encoded: string): SessionData | null {
+  try {
+    return JSON.parse(decodeURIComponent(atob(encoded)));
+  } catch {
+    return null;
+  }
+}
+
 // ─── ANSWER TEXT ─────────────────────────────────────────────
 export function getAnswerText(q: Question, a: Answer | undefined): string {
   if (a === undefined || a === null || a === '') return '—';
@@ -144,6 +160,7 @@ export async function sendResultEmail(params: {
         to_email: params.aEmail,
         to_name: params.aName,
         score: params.score,
+        grade_10: (params.score / 10).toFixed(1),
         label: params.label,
         desc: params.desc,
         results_url: `${window.location.origin}${window.location.pathname}?result=${params.sessionId}&token=${params.resultToken}`,

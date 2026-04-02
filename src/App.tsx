@@ -5,8 +5,9 @@ import {
   Answer, calcScore, getLabel, getDesc, getScoreColors,
   getRandomLabelSet, generateToken, generateSessionId,
   saveSession, loadSession, saveResultToken, getResultToken,
-  getAnswerText, sendResultEmail,
+  getAnswerText, sendResultEmail, encodeSessionData, decodeSessionData,
 } from './utils';
+import { WordBackground } from './WordBackground';
 
 // ─── TYPES ───────────────────────────────────────────────────
 type Screen = 'welcome' | 'setup' | 'aanswer' | 'link' | 'benter' | 'banswer' | 'bthanks' | 'result';
@@ -38,7 +39,7 @@ const INIT: State = {
   emailSent: false, emailLoading: false,
 };
 
-// ─── PARTICLES ───────────────────────────────────────────────
+// ─── PARTICLES BACKGROUND (The Original) ─────────────────────
 function Particles() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -191,7 +192,7 @@ function ScoreRing({ score, colors }: { score: number; colors: [string, string] 
         />
       </svg>
       <div className="score-inner">
-        <span className="score-num" style={{ backgroundImage: `linear-gradient(135deg, ${colors[0]}, ${colors[1]})` }}>{displayed}</span>
+        <span className="score-num" style={{ backgroundImage: `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`, WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{displayed}</span>
         <span className="score-denom">/ 100</span>
       </div>
     </div>
@@ -212,6 +213,8 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const resultId = params.get('result');
     const urlToken = params.get('token');
+    const dataEncoded = params.get('d');
+    
     if (resultId && urlToken) {
       const session = loadSession();
       if (session && session.sessionId === resultId && session.resultToken === urlToken) {
@@ -226,6 +229,17 @@ export default function App() {
           labelSet: session.labelSet,
           resultToken: session.resultToken,
           sessionId: session.sessionId,
+          screenKey: prev.screenKey + 1,
+        }));
+      }
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (dataEncoded) {
+      const decoded = decodeSessionData(dataEncoded);
+      if (decoded) {
+        saveSession(decoded);
+        setS(prev => ({
+          ...prev,
+          screen: 'benter',
           screenKey: prev.screenKey + 1,
         }));
       }
@@ -394,7 +408,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <Particles />
+      {(s.screen === 'welcome' || s.screen === 'benter') ? <WordBackground /> : <Particles />}
       <div className="app-inner" key={s.screenKey}>
         <Logo onClick={s.screen !== 'welcome' ? () => go('welcome', INIT) : undefined} />
 
@@ -416,7 +430,7 @@ export default function App() {
                 />
                 <p className="field-hint">This becomes the unlock code for your link recipient.</p>
               </div>
-              <div className="field" style={{ marginBottom: 0 }}>
+              <div className="field field-last">
                 <label>Your email</label>
                 <input
                   type="email" placeholder="you@email.com"
@@ -456,13 +470,22 @@ export default function App() {
                     className={`chip${setupCats.includes(cat) ? ' selected' : ''}`}
                     onClick={() => toggleCat(cat)}
                   >
-                    {cat} <span className="chip-count">{count}</span>
+                    <span>{cat}</span>
+                    <span className="chip-count">{count}</span>
                   </button>
                 );
               })}
             </div>
 
-            <div className="section-label" style={{ marginTop: '1.5rem' }}>
+
+            <button 
+              className="btn btn-mid-next"
+              onClick={() => document.getElementById('q-section')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              Continue Setup ↓
+            </button>
+
+            <div id="q-section" className="section-label section-top-margin">
               Number of questions <span className="section-hint">— {pool.length} available</span>
             </div>
             <div className="count-slider-wrap">
@@ -471,38 +494,42 @@ export default function App() {
                 type="range" min={1} max={Math.min(pool.length, UI.maxQuestionsPerSession)}
                 step={1} value={Math.min(qCount, pool.length)}
                 onChange={e => setQCount(parseInt(e.target.value))}
-                style={{ flex: 1 }}
+                className="count-range"
               />
             </div>
 
-            <div className="section-label" style={{ marginTop: '1.5rem' }}>
+            <div className="section-label section-top-margin">
               Review questions <span className="section-hint">— replace or remove any</span>
             </div>
+
             <div className="questions-list">
-              {allSetupQs.map((q, i) => (
-                <div key={q.id} className="setup-q-row animate-up" style={{ animationDelay: `${i * 40}ms` }}>
-                  <div className="setup-q-body">
-                    <span className="q-num">Q{i + 1}</span>
-                    <div>
-                      <p className="setup-q-text">{q.text}</p>
-                      <span className="badge badge-purple">{q.cat}</span>
+              {allSetupQs.map((q, i) => {
+                  const originalIdx = allSetupQs.findIndex(item => item.id === q.id);
+                  return (
+                    <div key={q.id} className="setup-q-row animate-up" style={{ animationDelay: `${i * 40}ms` }}>
+                      <div className="setup-q-body">
+                        <span className="q-num">Q{originalIdx + 1}</span>
+                        <div>
+                          <p className="setup-q-text">{q.text}</p>
+                          <span className="badge badge-purple">{q.cat}</span>
+                        </div>
+                      </div>
+                      <div className="setup-q-actions">
+                        {!q._custom && (
+                          <button className="icon-btn" onClick={() => replaceQ(originalIdx)} title="Replace">↻</button>
+                        )}
+                        <button className="icon-btn icon-btn-danger" onClick={() => removeQ(originalIdx, !!q._custom)} title="Remove">✕</button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="setup-q-actions">
-                    {!q._custom && (
-                      <button className="icon-btn" onClick={() => replaceQ(i)} title="Replace">↻</button>
-                    )}
-                    <button className="icon-btn icon-btn-danger" onClick={() => removeQ(i, !!q._custom)} title="Remove">✕</button>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
             </div>
 
             {showAddQ ? (
               <div className="card add-q-card animate-up">
                 <div className="field">
                   <label>Question type</label>
-                  <div className="chip-grid" style={{ marginBottom: 0 }}>
+                  <div className="chip-grid no-margin">
                     {(['mcq', 'msq', 'written'] as const).map(t => (
                       <button key={t} className={`chip${newQType === t ? ' selected' : ''}`} onClick={() => setNewQType(t)}>
                         {t.toUpperCase()}
@@ -515,25 +542,24 @@ export default function App() {
                   <input type="text" placeholder="Type your question..." value={newQText} onChange={e => setNewQText(e.target.value)} />
                 </div>
                 {newQType !== 'written' && (
-                  <div className="field" style={{ marginBottom: 0 }}>
+                  <div className="field field-last">
                     <label>Options (one per line)</label>
                     <textarea rows={4} placeholder={"Option 1\nOption 2\nOption 3"} value={newQOpts} onChange={e => setNewQOpts(e.target.value)} />
                   </div>
                 )}
-                <div className="btn-row" style={{ marginTop: '1rem' }}>
+                <div className="btn-row btn-row-top">
                   <button className="btn btn-ghost" onClick={() => setShowAddQ(false)}>Cancel</button>
                   <button className="btn btn-primary" onClick={addCustomQ}>Add question</button>
                 </div>
               </div>
             ) : (
-              <button className="btn btn-outline" style={{ marginTop: '0.75rem' }} onClick={() => setShowAddQ(true)}>
+              <button className="btn btn-outline btn-top-margin" onClick={() => setShowAddQ(true)}>
                 + Add your own question
               </button>
             )}
 
             <button
-              className={`btn btn-primary${setupReady ? ' loading' : ''}`}
-              style={{ marginTop: '1.5rem' }}
+              className={`btn btn-primary btn-top-margin${setupReady ? ' loading' : ''}`}
               onClick={handleSetupNext}
               disabled={allSetupQs.length === 0}
             >
@@ -579,31 +605,48 @@ export default function App() {
                 <span className="info-label">Unlock code</span>
                 <span className="unlock-code">{s.aName}</span>
               </div>
-              <div className="info-row" style={{ marginTop: '1rem' }}>
+              <div className="info-row info-row-top">
                 <span className="info-label">Session link</span>
                 <div className="link-box">cscore.app/s/{s.sessionId}</div>
               </div>
-              <button
-                className="btn btn-primary" style={{ marginTop: '1rem' }}
-                onClick={e => {
-                  navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?s=${s.sessionId}`).catch(() => {});
-                  const b = e.currentTarget;
-                  const t = b.textContent;
-                  b.textContent = 'Copied!';
-                  setTimeout(() => { if (b) b.textContent = t; }, 1500);
-                }}
-              >
-                Copy link
-              </button>
-            </div>
-            <div className="security-note animate-up" style={{ animationDelay: '300ms' }}>
-              <span className="security-icon">🔒</span>
-              <div>
-                <strong>Private & secure.</strong> B will only see your questions — never your answers or the C Score. Results are sent exclusively to your email ({s.aEmail}) the moment B submits.
+              <div className="btn-row btn-row-top animate-up" style={{ animationDelay: '200ms' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={e => {
+                    const encoded = encodeSessionData({
+                      aName: s.aName, aEmail: s.aEmail,
+                      questions: s.finalQs, aAnswers: s.aAnswers,
+                      labelSet: s.labelSet, resultToken: s.resultToken,
+                      sessionId: s.sessionId, createdAt: Date.now(),
+                    });
+                    navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?d=${encoded}`).catch(() => {});
+                    const b = e.currentTarget;
+                    const t = b.textContent;
+                    b.textContent = 'Copied!';
+                    setTimeout(() => { if (b) b.textContent = t; }, 1500);
+                  }}
+                >
+                  Copy link
+                </button>
+                <button
+                  className="btn btn-outline"
+                  onClick={() => {
+                    const encoded = encodeSessionData({ aName: s.aName, aEmail: s.aEmail, questions: s.finalQs, aAnswers: s.aAnswers, labelSet: s.labelSet, resultToken: s.resultToken, sessionId: s.sessionId, createdAt: Date.now() });
+                    const url = `${window.location.origin}${window.location.pathname}?d=${encoded}`;
+                    const text = `Let's test our compatibility! Unlock code: ${s.aName}`;
+                    if (navigator.share) {
+                      navigator.share({ title: 'C Score', text, url }).catch(()=>{});
+                    } else {
+                      navigator.clipboard.writeText(url);
+                      alert("Link copied! Share it with your friends.");
+                    }
+                  }}
+                >
+                  Share link
+                </button>
               </div>
             </div>
-            <hr className="divider" />
-            <button className="btn btn-ghost" onClick={() => go('benter')}>Preview B's experience →</button>
+
           </div>
         )}
 
@@ -616,7 +659,7 @@ export default function App() {
               <p className="hero-sub">Enter the code they gave you to unlock their questions.</p>
             </div>
             <div className={`card card-glow animate-up${bCodeErr ? ' shake' : ''}`}>
-              <div className="field" style={{ marginBottom: 0 }}>
+              <div className="field field-last">
                 <label>Unlock code</label>
                 <input
                   type="text" placeholder="Their name..."
@@ -665,16 +708,43 @@ export default function App() {
           </div>
         )}
 
-        {/* ═══ B THANKS ═══ */}
+        {/* ═══ B THANKS (Professional Redesign) ═══ */}
         {s.screen === 'bthanks' && (
           <div className="screen thanks-screen">
-            <div className="thanks-icon animate-pop">✓</div>
-            <h2>Thanks, submitted!</h2>
-            <p>Your answers have been sent. That's all from you!</p>
-            {s.emailLoading && <p className="email-status loading">Sending results to {s.aName}…</p>}
-            {s.emailSent && <p className="email-status sent">✓ Results emailed successfully</p>}
-            <div className="privacy-note">
-              <span>🔒</span> The C Score and all results are private — only {s.aName} can see them.
+            <div className="thanks-card animate-up">
+              <div className="thanks-icon-wrap animate-pop">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              
+              <h2 className="thanks-title">Thanks, submitted!</h2>
+              <p className="thanks-subtext">
+                Your answers have been securely sent. We're calculating the C Score and notifying {s.aName} right now.
+              </p>
+
+              <div className="status-pill-group">
+                {s.emailLoading && (
+                  <div className="status-pill animate-up" style={{ animationDelay: '200ms' }}>
+                    <span className="status-pill-icon">⏳</span>
+                    <span>Sending results to {s.aName}...</span>
+                  </div>
+                )}
+                {s.emailSent && (
+                  <div className="status-pill success animate-up" style={{ animationDelay: '200ms' }}>
+                    <span className="status-pill-icon">✓</span>
+                    <span>Results emailed successfully</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="privacy-footer animate-up" style={{ animationDelay: '400ms' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span>Private & Secure — Only {s.aName} can access these results.</span>
+              </div>
             </div>
           </div>
         )}
@@ -693,6 +763,10 @@ export default function App() {
               <div className="result-hero">
                 <ScoreRing score={score} colors={scoreColors} />
                 <div className="score-label animate-up" style={{ animationDelay: '600ms' }}>{scoreLabel}</div>
+                <div className="similarity-badge animate-up" style={{ animationDelay: '675ms' }}>
+                  <span className="similarity-label">Similarity Grade</span>
+                  <span className="similarity-value">{(score / 10).toFixed(1)} <small>/ 10</small></span>
+                </div>
                 <p className="score-desc animate-up" style={{ animationDelay: '750ms' }}>{scoreDesc}</p>
               </div>
               <div className="card animate-up" style={{ animationDelay: '900ms' }}>
