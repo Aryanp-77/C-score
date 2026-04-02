@@ -495,6 +495,7 @@ export default function App() {
                 step={1} value={Math.min(qCount, pool.length)}
                 onChange={e => setQCount(parseInt(e.target.value))}
                 className="count-range"
+                aria-label="Number of questions"
               />
             </div>
 

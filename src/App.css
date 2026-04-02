@@ -146,6 +146,7 @@ body::before {
   justify-content: center;
   gap: clamp(0.75rem, 3vw, 1.4rem); /* Responsive gap */
   margin-bottom: clamp(2rem, 10vw, 4.8rem); /* Responsive spacing */
+  -webkit-user-select: none;
   user-select: none;
 }
 .logo-mark {
@@ -227,6 +228,7 @@ body::before {
   border-radius: 24px;
   padding: clamp(1rem, 5vw, 2rem); /* Fluid padding */
   margin-bottom: 1.5rem;
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 .card-glow {
